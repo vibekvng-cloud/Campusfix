@@ -1,0 +1,6 @@
+{
+  "name": "CampusFix",
+  "description": "Smart campus maintenance reporting system for University of Cape Coast (UCC), Ghana with QR scanning, lecture theatre fault tracking, and team dispatch.",
+  "requestFramePermissions": ["CAMERA"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
