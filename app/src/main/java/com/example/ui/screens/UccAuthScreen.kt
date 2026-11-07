@@ -91,8 +91,7 @@ enum class AuthMode {
 
 enum class SignUpRoleType {
   STUDENT,
-  WORKER,
-  ADMIN
+  WORKER
 }
 
 @Composable
@@ -153,12 +152,14 @@ private fun LoginScreenContent(
   var studentEmailInput by remember { mutableStateOf("") }
   var workerCodeInput by remember { mutableStateOf("") }
   var workerEmailInput by remember { mutableStateOf("") }
-  var adminCodeInput by remember { mutableStateOf("") }
-  var adminEmailInput by remember { mutableStateOf("") }
   var password by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
   var guestAliasInput by remember { mutableStateOf("") }
+  var showAdminModal by remember { mutableStateOf(false) }
+  var adminModalEmail by remember { mutableStateOf("admin@gmail.com") }
+  var adminModalPassword by remember { mutableStateOf("") }
+  var adminModalError by remember { mutableStateOf<String?>(null) }
 
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
@@ -170,7 +171,7 @@ private fun LoginScreenContent(
       Spacer(modifier = Modifier.height(10.dp))
       AuthHeader(
         title = "Welcome Back.",
-        subtitle = "Sign in to access UCC Student, Works Department, or Directorate Admin dashboard."
+        subtitle = "Sign in to access UCC Student or Works Department dashboard."
       )
     }
 
@@ -229,7 +230,7 @@ private fun LoginScreenContent(
 
           Spacer(modifier = Modifier.height(18.dp))
 
-          // 3-way Role Switcher: Student vs Works Dept vs Admin
+          // 2-way Role Switcher: Student vs Works Dept (Admin is hidden from public view)
           Text(
             text = "Select Account Role",
             fontSize = 12.sp,
@@ -241,8 +242,8 @@ private fun LoginScreenContent(
             modifier = Modifier
               .fillMaxWidth()
               .background(SkillAlleyBg, RoundedCornerShape(12.dp))
-              .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
+              .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
           ) {
             // Student
             val isStudent = loginRole == UserRole.STUDENT
@@ -259,7 +260,7 @@ private fun LoginScreenContent(
               color = if (isStudent) SkillAlleyButtonDark else Color.Transparent
             ) {
               Row(
-                modifier = Modifier.padding(vertical = 7.dp),
+                modifier = Modifier.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
               ) {
@@ -267,13 +268,13 @@ private fun LoginScreenContent(
                   Icons.Filled.School,
                   contentDescription = null,
                   tint = if (isStudent) Color.White else SkillAlleyTextSecondary,
-                  modifier = Modifier.size(14.dp)
+                  modifier = Modifier.size(15.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                   text = "Student",
                   color = if (isStudent) Color.White else SkillAlleyTextSecondary,
-                  fontSize = 11.sp,
+                  fontSize = 12.sp,
                   fontWeight = if (isStudent) FontWeight.Bold else FontWeight.Medium
                 )
               }
@@ -294,7 +295,7 @@ private fun LoginScreenContent(
               color = if (isWorker) SkillAlleyButtonDark else Color.Transparent
             ) {
               Row(
-                modifier = Modifier.padding(vertical = 7.dp),
+                modifier = Modifier.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
               ) {
@@ -302,49 +303,14 @@ private fun LoginScreenContent(
                   Icons.Filled.Engineering,
                   contentDescription = null,
                   tint = if (isWorker) Color.White else SkillAlleyTextSecondary,
-                  modifier = Modifier.size(14.dp)
+                  modifier = Modifier.size(15.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                  text = "Staff",
+                  text = "Works Staff",
                   color = if (isWorker) Color.White else SkillAlleyTextSecondary,
-                  fontSize = 11.sp,
+                  fontSize = 12.sp,
                   fontWeight = if (isWorker) FontWeight.Bold else FontWeight.Medium
-                )
-              }
-            }
-
-            // Directorate Admin
-            val isAdmin = loginRole == UserRole.ADMIN
-            Surface(
-              modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(10.dp))
-                .clickable {
-                  loginRole = UserRole.ADMIN
-                  errorMessage = null
-                }
-                .testTag("login_tab_admin"),
-              shape = RoundedCornerShape(10.dp),
-              color = if (isAdmin) SkillAlleyButtonDark else Color.Transparent
-            ) {
-              Row(
-                modifier = Modifier.padding(vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-              ) {
-                Icon(
-                  Icons.Filled.AdminPanelSettings,
-                  contentDescription = null,
-                  tint = if (isAdmin) Color.White else SkillAlleyTextSecondary,
-                  modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                  text = "Admin",
-                  color = if (isAdmin) Color.White else SkillAlleyTextSecondary,
-                  fontSize = 11.sp,
-                  fontWeight = if (isAdmin) FontWeight.Bold else FontWeight.Medium
                 )
               }
             }
@@ -484,71 +450,6 @@ private fun LoginScreenContent(
                 )
               )
             }
-            UserRole.ADMIN -> {
-              // Admin Code
-              Text(
-                text = "Directorate Admin Code",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminCodeInput,
-                onValueChange = {
-                  adminCodeInput = it
-                  errorMessage = null
-                },
-                placeholder = { Text("e.g. ADMIN/001", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = {
-                  Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = SkillAlleyTextSecondary)
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("login_admin_code_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-
-              Spacer(modifier = Modifier.height(12.dp))
-
-              // Admin Email
-              Text(
-                text = "Official Admin Email",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminEmailInput,
-                onValueChange = {
-                  adminEmailInput = it
-                  errorMessage = null
-                },
-                placeholder = { Text("e.g. admin.works@ucc.edu.gh", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = {
-                  Icon(Icons.Filled.Mail, contentDescription = null, tint = SkillAlleyTextSecondary)
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("login_admin_email_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-            }
             else -> {}
           }
 
@@ -622,12 +523,24 @@ private fun LoginScreenContent(
               when (loginRole) {
                 UserRole.STUDENT -> {
                   val cleanReg = registrationOrIndexInput.trim()
-                  if (cleanReg.isBlank()) {
+                  val cleanEmail = studentEmailInput.trim()
+
+                  // Check if admin is logging in via the primary login inputs
+                  if (cleanReg.equals("admin@gmail.com", ignoreCase = true) ||
+                      cleanEmail.equals("admin@gmail.com", ignoreCase = true) ||
+                      cleanReg.equals("ADMIN/001", ignoreCase = true)
+                  ) {
+                    if (password == "1234") {
+                      onLogin("ADMIN/001", "Prof. K. Baidoo", "admin@gmail.com", UserRole.ADMIN, "Directorate of Physical Development & Works")
+                    } else {
+                      errorMessage = "Invalid admin password. Please try again."
+                    }
+                  } else if (cleanReg.isBlank()) {
                     errorMessage = "Please enter your Registration Number or Index Number (e.g. PS/CSC/22/0199)"
                   } else if (password.isBlank()) {
                     errorMessage = "Please enter your password"
                   } else {
-                    val finalEmail = studentEmailInput.trim().ifBlank {
+                    val finalEmail = cleanEmail.ifBlank {
                       val sanitized = cleanReg.lowercase().replace("/", ".")
                       "$sanitized@stu.ucc.edu.gh"
                     }
@@ -643,7 +556,18 @@ private fun LoginScreenContent(
                 UserRole.WORKER -> {
                   val cleanStaffCode = workerCodeInput.trim()
                   val cleanEmail = workerEmailInput.trim()
-                  if (cleanStaffCode.isBlank() && cleanEmail.isBlank()) {
+
+                  // Check if admin is logging in via worker input
+                  if (cleanStaffCode.equals("admin@gmail.com", ignoreCase = true) ||
+                      cleanEmail.equals("admin@gmail.com", ignoreCase = true) ||
+                      cleanStaffCode.equals("ADMIN/001", ignoreCase = true)
+                  ) {
+                    if (password == "1234") {
+                      onLogin("ADMIN/001", "Prof. K. Baidoo", "admin@gmail.com", UserRole.ADMIN, "Directorate of Physical Development & Works")
+                    } else {
+                      errorMessage = "Invalid admin password. Please try again."
+                    }
+                  } else if (cleanStaffCode.isBlank() && cleanEmail.isBlank()) {
                     errorMessage = "Please enter your Staff Code (e.g. STAFF/0891) or Gmail"
                   } else if (password.isBlank()) {
                     errorMessage = "Please enter your password"
@@ -657,19 +581,6 @@ private fun LoginScreenContent(
                       "UCC Works Technician"
                     }
                     onLogin(finalCode, workerName, finalEmail, UserRole.WORKER, "Works Directorate (Staff)")
-                  }
-                }
-                UserRole.ADMIN -> {
-                  val cleanAdminCode = adminCodeInput.trim()
-                  val cleanEmail = adminEmailInput.trim()
-                  if (cleanAdminCode.isBlank() && cleanEmail.isBlank()) {
-                    errorMessage = "Please enter your Admin Code (e.g. ADMIN/001) or Email"
-                  } else if (password.isBlank()) {
-                    errorMessage = "Please enter your admin password"
-                  } else {
-                    val finalCode = cleanAdminCode.ifBlank { "ADMIN/001" }
-                    val finalEmail = cleanEmail.ifBlank { "admin.works@ucc.edu.gh" }
-                    onLogin(finalCode, "Prof. K. Baidoo", finalEmail, UserRole.ADMIN, "Directorate of Physical Development")
                   }
                 }
                 else -> {}
@@ -691,7 +602,6 @@ private fun LoginScreenContent(
                 text = when (loginRole) {
                   UserRole.STUDENT -> "Log In as Student"
                   UserRole.WORKER -> "Log In as Staff (Works Dept)"
-                  UserRole.ADMIN -> "Log In as Directorate Admin"
                   else -> "Log In"
                 },
                 color = Color.White,
@@ -731,6 +641,46 @@ private fun LoginScreenContent(
                 .padding(4.dp)
                 .testTag("link_to_signup")
             )
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          // Discrete Directorate Portal Login (Not visible as normal role tabs)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Surface(
+              shape = RoundedCornerShape(100.dp),
+              color = Color.Transparent,
+              modifier = Modifier
+                .clickable {
+                  adminModalError = null
+                  adminModalPassword = ""
+                  showAdminModal = true
+                }
+                .testTag("directorate_portal_link")
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+              ) {
+                Icon(
+                  Icons.Filled.Lock,
+                  contentDescription = null,
+                  tint = SkillAlleyTextMuted,
+                  modifier = Modifier.size(11.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                  text = "Directorate Portal",
+                  fontSize = 11.sp,
+                  color = SkillAlleyTextMuted,
+                  fontWeight = FontWeight.Medium
+                )
+              }
+            }
           }
         }
       }
@@ -839,6 +789,95 @@ private fun LoginScreenContent(
       Spacer(modifier = Modifier.height(20.dp))
     }
   }
+
+  if (showAdminModal) {
+    androidx.compose.material3.AlertDialog(
+      onDismissRequest = { showAdminModal = false },
+      title = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = SkillAlleyButtonDark)
+          Spacer(modifier = Modifier.width(8.dp))
+          Text(
+            text = "Directorate Secure Login",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = SkillAlleyTextPrimary
+          )
+        }
+      },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text(
+            text = "Restricted Directorate & Works Administration portal. Only authorized administrators may sign in.",
+            fontSize = 12.sp,
+            color = SkillAlleyTextSecondary
+          )
+
+          OutlinedTextField(
+            value = adminModalEmail,
+            onValueChange = {
+              adminModalEmail = it
+              adminModalError = null
+            },
+            label = { Text("Admin Email", fontSize = 12.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().testTag("modal_admin_email_input"),
+            shape = RoundedCornerShape(12.dp)
+          )
+
+          OutlinedTextField(
+            value = adminModalPassword,
+            onValueChange = {
+              adminModalPassword = it
+              adminModalError = null
+            },
+            label = { Text("Password", fontSize = 12.sp) },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().testTag("modal_admin_password_input"),
+            shape = RoundedCornerShape(12.dp)
+          )
+
+          if (adminModalError != null) {
+            Text(
+              text = adminModalError!!,
+              color = Color(0xFFDC2626),
+              fontSize = 12.sp,
+              fontWeight = FontWeight.Medium
+            )
+          }
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val cleanEmail = adminModalEmail.trim()
+            if (cleanEmail.equals("admin@gmail.com", ignoreCase = true) && adminModalPassword == "1234") {
+              showAdminModal = false
+              onLogin("ADMIN/001", "Prof. K. Baidoo", "admin@gmail.com", UserRole.ADMIN, "Directorate of Physical Development & Works")
+            } else if (!cleanEmail.equals("admin@gmail.com", ignoreCase = true)) {
+              adminModalError = "Invalid admin email. Expected admin@gmail.com"
+            } else {
+              adminModalError = "Invalid admin password (Hint: 1234)"
+            }
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = SkillAlleyButtonDark),
+          shape = RoundedCornerShape(100.dp),
+          modifier = Modifier.testTag("modal_admin_submit")
+        ) {
+          Text("Access Admin Portal", fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        androidx.compose.material3.TextButton(onClick = { showAdminModal = false }) {
+          Text("Cancel", color = SkillAlleyTextSecondary)
+        }
+      },
+      containerColor = Color.White,
+      shape = RoundedCornerShape(20.dp)
+    )
+  }
 }
 
 /**
@@ -867,13 +906,6 @@ private fun SignUpScreenContent(
   var workerPassword by remember { mutableStateOf("") }
   var workerConfirmPassword by remember { mutableStateOf("") }
 
-  // Admin fields
-  var adminName by remember { mutableStateOf("") }
-  var adminStaffCode by remember { mutableStateOf("") }
-  var adminEmail by remember { mutableStateOf("") }
-  var adminPassword by remember { mutableStateOf("") }
-  var adminConfirmPassword by remember { mutableStateOf("") }
-
   // Guest Alias for quick jump
   var guestAlias by remember { mutableStateOf("") }
 
@@ -891,7 +923,7 @@ private fun SignUpScreenContent(
       Spacer(modifier = Modifier.height(10.dp))
       AuthHeader(
         title = "Create UCC Account",
-        subtitle = "Register as a UCC Student, Works Department Staff, or Directorate Admin."
+        subtitle = "Register as a UCC Student or Works Department Staff."
       )
     }
 
@@ -948,7 +980,7 @@ private fun SignUpScreenContent(
 
           Spacer(modifier = Modifier.height(18.dp))
 
-          // 3-way Role Selection
+          // 2-way Role Selection: Student or Staff (Works Dept) - Admin can only login
           Text(
             text = "Select Account Type",
             fontSize = 12.sp,
@@ -958,7 +990,7 @@ private fun SignUpScreenContent(
           Spacer(modifier = Modifier.height(6.dp))
           Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
           ) {
             // Student
             Surface(
@@ -974,7 +1006,7 @@ private fun SignUpScreenContent(
               border = if (signUpRoleType == SignUpRoleType.STUDENT) null else androidx.compose.foundation.BorderStroke(1.dp, SkillAlleyBorder)
             ) {
               Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 9.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
               ) {
@@ -982,12 +1014,12 @@ private fun SignUpScreenContent(
                   imageVector = Icons.Filled.School,
                   contentDescription = null,
                   tint = if (signUpRoleType == SignUpRoleType.STUDENT) Color.White else SkillAlleyTextSecondary,
-                  modifier = Modifier.size(14.dp)
+                  modifier = Modifier.size(15.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                   text = "Student",
-                  fontSize = 11.sp,
+                  fontSize = 12.sp,
                   fontWeight = FontWeight.Bold,
                   color = if (signUpRoleType == SignUpRoleType.STUDENT) Color.White else SkillAlleyTextPrimary
                 )
@@ -1008,7 +1040,7 @@ private fun SignUpScreenContent(
               border = if (signUpRoleType == SignUpRoleType.WORKER) null else androidx.compose.foundation.BorderStroke(1.dp, SkillAlleyBorder)
             ) {
               Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 9.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
               ) {
@@ -1016,48 +1048,14 @@ private fun SignUpScreenContent(
                   imageVector = Icons.Filled.Engineering,
                   contentDescription = null,
                   tint = if (signUpRoleType == SignUpRoleType.WORKER) Color.White else SkillAlleyTextSecondary,
-                  modifier = Modifier.size(14.dp)
+                  modifier = Modifier.size(15.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                  text = "Staff",
-                  fontSize = 11.sp,
+                  text = "Works Staff",
+                  fontSize = 12.sp,
                   fontWeight = FontWeight.Bold,
                   color = if (signUpRoleType == SignUpRoleType.WORKER) Color.White else SkillAlleyTextPrimary
-                )
-              }
-            }
-
-            // Admin
-            Surface(
-              modifier = Modifier
-                .weight(1f)
-                .clickable {
-                  signUpRoleType = SignUpRoleType.ADMIN
-                  errorMessage = null
-                }
-                .testTag("signup_select_admin"),
-              shape = RoundedCornerShape(12.dp),
-              color = if (signUpRoleType == SignUpRoleType.ADMIN) SkillAlleyButtonDark else SkillAlleyBg,
-              border = if (signUpRoleType == SignUpRoleType.ADMIN) null else androidx.compose.foundation.BorderStroke(1.dp, SkillAlleyBorder)
-            ) {
-              Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-              ) {
-                Icon(
-                  imageVector = Icons.Filled.AdminPanelSettings,
-                  contentDescription = null,
-                  tint = if (signUpRoleType == SignUpRoleType.ADMIN) Color.White else SkillAlleyTextSecondary,
-                  modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                  text = "Admin",
-                  fontSize = 11.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = if (signUpRoleType == SignUpRoleType.ADMIN) Color.White else SkillAlleyTextPrimary
                 )
               }
             }
@@ -1432,168 +1430,6 @@ private fun SignUpScreenContent(
                 )
               )
             }
-            SignUpRoleType.ADMIN -> {
-              // ADMIN SIGN UP FIELDS
-              Text(
-                text = "Administrator Full Name & Title",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminName,
-                onValueChange = {
-                  adminName = it
-                  errorMessage = null
-                },
-                placeholder = { Text("e.g. Prof. K. Baidoo", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = SkillAlleyTextSecondary) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("signup_admin_name_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-
-              Spacer(modifier = Modifier.height(10.dp))
-
-              Text(
-                text = "Admin Staff Code",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminStaffCode,
-                onValueChange = {
-                  adminStaffCode = it
-                  errorMessage = null
-                },
-                placeholder = { Text("e.g. ADMIN/001", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = SkillAlleyTextSecondary) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("signup_admin_code_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-
-              Spacer(modifier = Modifier.height(10.dp))
-
-              Text(
-                text = "Official Admin Email",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminEmail,
-                onValueChange = {
-                  adminEmail = it
-                  errorMessage = null
-                },
-                placeholder = { Text("e.g. admin.works@ucc.edu.gh", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Filled.Mail, contentDescription = null, tint = SkillAlleyTextSecondary) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("signup_admin_email_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-
-              Spacer(modifier = Modifier.height(10.dp))
-
-              Text(
-                text = "Admin Password",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminPassword,
-                onValueChange = {
-                  adminPassword = it
-                  errorMessage = null
-                },
-                placeholder = { Text("Create master password", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = SkillAlleyTextSecondary) },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                  IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null, tint = SkillAlleyTextSecondary)
-                  }
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("signup_admin_password_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-
-              Spacer(modifier = Modifier.height(10.dp))
-
-              Text(
-                text = "Confirm Admin Password",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SkillAlleyTextPrimary
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = adminConfirmPassword,
-                onValueChange = {
-                  adminConfirmPassword = it
-                  errorMessage = null
-                },
-                placeholder = { Text("Re-enter password", color = SkillAlleyTextMuted, fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = SkillAlleyTextSecondary) },
-                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                  IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                    Icon(if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null, tint = SkillAlleyTextSecondary)
-                  }
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("signup_admin_confirm_password_input"),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedBorderColor = SkillAlleyButtonDark,
-                  unfocusedBorderColor = SkillAlleyBorder,
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White,
-                  focusedTextColor = SkillAlleyTextPrimary,
-                  unfocusedTextColor = SkillAlleyTextPrimary
-                )
-              )
-            }
           }
 
           if (errorMessage != null) {
@@ -1648,21 +1484,6 @@ private fun SignUpScreenContent(
                     onCreateAccount(cleanCode, finalName, workerGmail.trim(), UserRole.WORKER, workerTeam)
                   }
                 }
-                SignUpRoleType.ADMIN -> {
-                  val cleanCode = adminStaffCode.trim()
-                  if (cleanCode.isBlank()) {
-                    errorMessage = "Please enter your Admin Staff Code (e.g. ADMIN/001)"
-                  } else if (adminEmail.isBlank() || !adminEmail.contains("@")) {
-                    errorMessage = "Please enter your official admin email"
-                  } else if (adminPassword.length < 4) {
-                    errorMessage = "Password must be at least 4 characters"
-                  } else if (adminPassword != adminConfirmPassword) {
-                    errorMessage = "Passwords do not match. Please re-enter."
-                  } else {
-                    val finalName = adminName.trim().ifBlank { "Directorate Admin" }
-                    onCreateAccount(cleanCode, finalName, adminEmail.trim(), UserRole.ADMIN, "Directorate of Physical Development")
-                  }
-                }
               }
             },
             shape = RoundedCornerShape(100.dp),
@@ -1681,7 +1502,6 @@ private fun SignUpScreenContent(
                 text = when (signUpRoleType) {
                   SignUpRoleType.STUDENT -> "Create Student Account"
                   SignUpRoleType.WORKER -> "Create Staff (Works) Account"
-                  SignUpRoleType.ADMIN -> "Create Directorate Admin Account"
                 },
                 color = Color.White,
                 fontSize = 14.sp,
@@ -1848,7 +1668,7 @@ private fun QuickDemoAccountsCard(
         Spacer(modifier = Modifier.width(8.dp))
         Column {
           Text("Quick 1-Tap Demo Access", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SkillAlleyTextPrimary)
-          Text("Instant login into Student, Staff, Admin or Guest dashboards:", fontSize = 11.sp, color = SkillAlleyTextSecondary)
+          Text("Instant login into Student, Staff, or Guest dashboards:", fontSize = 11.sp, color = SkillAlleyTextSecondary)
         }
       }
 
@@ -1880,21 +1700,6 @@ private fun QuickDemoAccountsCard(
         scoreTag = "Staff",
         onSelect = onSelect,
         testTag = "demo_login_works"
-      )
-
-      Spacer(modifier = Modifier.height(8.dp))
-
-      // 3. Directorate Admin Demo Account
-      DemoAccountRowSkillalley(
-        name = "Prof. K. Baidoo",
-        roleTag = "Directorate Admin",
-        id = "ADMIN/001",
-        email = "admin.works@ucc.edu.gh",
-        department = "Directorate of Physical Development",
-        role = UserRole.ADMIN,
-        scoreTag = "Admin",
-        onSelect = onSelect,
-        testTag = "demo_login_admin"
       )
 
       Spacer(modifier = Modifier.height(8.dp))
