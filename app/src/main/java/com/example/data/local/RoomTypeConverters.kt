@@ -43,7 +43,9 @@ class RoomTypeConverters {
   @TypeConverter
   fun toUserRole(value: String): UserRole =
     when (value.uppercase()) {
-      "WORKER", "MAINTENANCE", "ADMIN", "STAFF" -> UserRole.WORKER
+      "ADMIN" -> UserRole.ADMIN
+      "GUEST" -> UserRole.GUEST
+      "WORKER", "MAINTENANCE", "STAFF" -> UserRole.WORKER
       else -> UserRole.STUDENT
     }
 

@@ -8,6 +8,7 @@ import com.example.data.model.CampusRoom
 import com.example.data.model.FaultCategory
 import com.example.data.model.FaultReport
 import com.example.data.model.MaintenanceTeam
+import com.example.data.model.OnlineWorker
 import com.example.data.model.ReportStatus
 import com.example.data.model.UrgencyLevel
 import com.example.data.model.UserProfile
@@ -28,6 +29,11 @@ enum class NavigationTab(val label: String) {
   QUEUE("Job Queue"),
   DASHBOARD("Analytics"),
   PROFILE("Profile")
+}
+
+enum class AdminDashboardViewMode(val label: String) {
+  STUDENT_VIEW("Student View"),
+  STAFF_VIEW("Staff & Ops View")
 }
 
 class CampusFixViewModel(application: Application) : AndroidViewModel(application) {
@@ -52,6 +58,15 @@ class CampusFixViewModel(application: Application) : AndroidViewModel(applicatio
     null
   )
 
+  val onlineWorkers: StateFlow<List<OnlineWorker>> = repository.onlineWorkers.stateIn(
+    viewModelScope,
+    SharingStarted.WhileSubscribed(5000),
+    emptyList()
+  )
+
+  private val _adminDashboardViewMode = MutableStateFlow(AdminDashboardViewMode.STAFF_VIEW)
+  val adminDashboardViewMode: StateFlow<AdminDashboardViewMode> = _adminDashboardViewMode.asStateFlow()
+
   private val _activeTab = MutableStateFlow(NavigationTab.HOME)
   val activeTab: StateFlow<NavigationTab> = _activeTab.asStateFlow()
 
@@ -75,13 +90,16 @@ class CampusFixViewModel(application: Application) : AndroidViewModel(applicatio
 
   init {
     viewModelScope.launch {
-      // Ensure seed runs if needed
       CampusFixDatabase.seedDatabase(database)
     }
   }
 
   fun setTab(tab: NavigationTab) {
     _activeTab.value = tab
+  }
+
+  fun setAdminDashboardViewMode(mode: AdminDashboardViewMode) {
+    _adminDashboardViewMode.value = mode
   }
 
   fun openQrScanner() {
@@ -101,20 +119,32 @@ class CampusFixViewModel(application: Application) : AndroidViewModel(applicatio
     _selectedRoomForReport.value = null
   }
 
-  fun selectRoomManually(room: CampusRoom) {
-    _selectedRoomForReport.value = room
-  }
-
   fun showRoomQr(room: CampusRoom?) {
     _showRoomQrModal.value = room
+  }
+
+  fun dismissRoomQrModal() {
+    _showRoomQrModal.value = null
+  }
+
+  fun showReportDetail(report: FaultReport) {
+    _selectedReportDetail.value = report
   }
 
   fun selectReportDetail(report: FaultReport?) {
     _selectedReportDetail.value = report
   }
 
+  fun dismissReportDetail() {
+    _selectedReportDetail.value = null
+  }
+
   fun showAuthModal(show: Boolean) {
     _showAuthDialog.value = show
+  }
+
+  fun selectRoomManually(room: CampusRoom) {
+    _selectedRoomForReport.value = room
   }
 
   fun clearSuccessMessage() {
@@ -126,48 +156,67 @@ class CampusFixViewModel(application: Application) : AndroidViewModel(applicatio
     category: FaultCategory,
     urgency: UrgencyLevel,
     description: String,
-    photoUri: String? = null,
-    sampleImageRes: Int? = null
+    imageAssetRes: Int? = null,
+    sampleImageRes: Int? = imageAssetRes,
+    onSuccess: () -> Unit = {}
   ) {
     viewModelScope.launch {
-      val user = currentProfile.value
-      val report = FaultReport(
-        id = "rep_${UUID.randomUUID().toString().take(8)}",
+      val profile = currentProfile.value
+      val reporterId = profile?.id ?: "guest_${UUID.randomUUID().toString().take(6)}"
+      val reporterName = profile?.fullName ?: "Campus Visitor"
+      val reporterEmail = profile?.email ?: "visitor@ucc.edu.gh"
+
+      val newReport = FaultReport(
+        id = "REP-${System.currentTimeMillis().toString().takeLast(6)}",
         roomCode = room.roomCode,
         roomName = room.roomName,
         building = room.building,
         category = category,
         urgency = urgency,
-        description = description.ifBlank { "${category.displayName} issue reported in ${room.roomName}" },
+        description = description.trim().ifBlank { "${category.displayName} issue logged at ${room.roomName}" },
         status = ReportStatus.OPEN,
-        assignedTeam = null,
-        reporterId = user?.id ?: "user_ucc_guest",
-        reporterName = user?.fullName ?: "UCC Student",
-        reporterEmail = user?.email ?: "student@stu.ucc.edu.gh",
-        createdAtMillis = System.currentTimeMillis(),
-        photoUri = photoUri,
-        sampleImageRes = sampleImageRes ?: category.sampleImageRes
+        reporterId = reporterId,
+        reporterName = reporterName,
+        reporterEmail = reporterEmail,
+        sampleImageRes = sampleImageRes ?: imageAssetRes
       )
 
-      repository.submitReport(report)
+      repository.submitReport(newReport)
       _selectedRoomForReport.value = null
-      _reportSuccessMessage.value = "Report logged for ${room.roomCode}! UCC Works & ICT teams notified."
-      _activeTab.value = NavigationTab.MY_REPORTS
+      _reportSuccessMessage.value = "Report #${newReport.id} logged for ${room.roomName}"
+      onSuccess()
     }
   }
 
-  fun assignTeam(reportId: String, team: MaintenanceTeam, technician: String?) {
+  fun assignReportTeam(reportId: String, team: MaintenanceTeam, technician: String? = null) {
     viewModelScope.launch {
       repository.assignTeam(reportId, team, technician)
-      // update selected detail if currently open
-      _selectedReportDetail.value?.let { current ->
-        if (current.id == reportId) {
-          _selectedReportDetail.value = current.copy(
-            status = ReportStatus.ASSIGNED,
-            assignedTeam = team,
-            assignedTechnician = technician ?: team.leadName
-          )
-        }
+      _reportSuccessMessage.value = "Assigned to ${team.displayName} Team"
+      val current = _selectedReportDetail.value
+      if (current?.id == reportId) {
+        _selectedReportDetail.value = current.copy(
+          assignedTeam = team,
+          assignedTechnician = technician ?: team.leadName,
+          status = ReportStatus.ASSIGNED
+        )
+      }
+    }
+  }
+
+  fun assignTeam(reportId: String, team: MaintenanceTeam, technician: String? = null) {
+    assignReportTeam(reportId, team, technician)
+  }
+
+  fun assignReportToWorker(reportId: String, worker: OnlineWorker) {
+    viewModelScope.launch {
+      repository.assignReportToWorker(reportId, worker)
+      _reportSuccessMessage.value = "Assigned to ${worker.name} (${worker.team})"
+      val current = _selectedReportDetail.value
+      if (current?.id == reportId) {
+        _selectedReportDetail.value = current.copy(
+          assignedTechnician = "${worker.name} (${worker.staffCode})",
+          status = ReportStatus.ASSIGNED
+        )
       }
     }
   }
@@ -175,14 +224,14 @@ class CampusFixViewModel(application: Application) : AndroidViewModel(applicatio
   fun updateReportStatus(reportId: String, newStatus: ReportStatus, notes: String? = null) {
     viewModelScope.launch {
       repository.updateReportStatus(reportId, newStatus, notes)
-      _selectedReportDetail.value?.let { current ->
-        if (current.id == reportId) {
-          _selectedReportDetail.value = current.copy(
-            status = newStatus,
-            resolutionNotes = notes ?: current.resolutionNotes,
-            resolvedAtMillis = if (newStatus == ReportStatus.RESOLVED) System.currentTimeMillis() else current.resolvedAtMillis
-          )
-        }
+      _reportSuccessMessage.value = "Status updated to ${newStatus.displayName}"
+      val current = _selectedReportDetail.value
+      if (current != null && current.id == reportId) {
+        _selectedReportDetail.value = current.copy(
+          status = newStatus,
+          resolutionNotes = notes ?: current.resolutionNotes,
+          resolvedAtMillis = if (newStatus == ReportStatus.RESOLVED) System.currentTimeMillis() else current.resolvedAtMillis
+        )
       }
     }
   }
@@ -213,6 +262,18 @@ class CampusFixViewModel(application: Application) : AndroidViewModel(applicatio
       )
       _showAuthDialog.value = false
     }
+  }
+
+  fun signInAsGuest(alias: String) {
+    val cleanAlias = alias.trim().ifBlank { "Campus Guest" }
+    val guestId = "GUEST/${(1000..9999).random()}"
+    signInOrUpdateProfile(
+      studentOrStaffId = guestId,
+      fullName = cleanAlias,
+      email = "${cleanAlias.lowercase().replace(" ", ".")}@guest.ucc.edu.gh",
+      role = UserRole.GUEST,
+      department = "Campus Guest Privileges"
+    )
   }
 
   fun signOut() {

@@ -94,7 +94,12 @@ fun ProfileScreen(
         Column {
           Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-              text = if (isWorker) "UCC Staff Credential" else "UCC Student ID Card",
+              text = when (profile?.role) {
+                UserRole.ADMIN -> "Directorate Admin Pass"
+                UserRole.WORKER -> "UCC Staff Credential"
+                UserRole.GUEST -> "Campus Visitor Pass"
+                else -> "UCC Student ID Card"
+              },
               fontSize = 20.sp,
               fontWeight = FontWeight.Bold,
               color = SkillAlleyTextPrimary
@@ -149,21 +154,18 @@ fun ProfileScreen(
         Box(
           modifier = Modifier
             .background(
-              brush = if (isWorker) {
-                Brush.linearGradient(
-                  colors = listOf(
-                    Color(0xFF1E293B),
-                    Color(0xFF0F172A),
-                    Color(0xFF1E1B4B)
-                  )
+              brush = when (profile?.role) {
+                UserRole.ADMIN -> Brush.linearGradient(
+                  colors = listOf(Color(0xFF311042), Color(0xFF1E1B4B), Color(0xFF0F172A))
                 )
-              } else {
-                Brush.linearGradient(
-                  colors = listOf(
-                    Color(0xFF18181B),
-                    Color(0xFF27272A),
-                    Color(0xFF18181B)
-                  )
+                UserRole.WORKER -> Brush.linearGradient(
+                  colors = listOf(Color(0xFF1E293B), Color(0xFF0F172A), Color(0xFF1E1B4B))
+                )
+                UserRole.GUEST -> Brush.linearGradient(
+                  colors = listOf(Color(0xFF064E3B), Color(0xFF0F172A), Color(0xFF18181B))
+                )
+                else -> Brush.linearGradient(
+                  colors = listOf(Color(0xFF18181B), Color(0xFF27272A), Color(0xFF18181B))
                 )
               }
             )
@@ -186,7 +188,11 @@ fun ProfileScreen(
                   contentAlignment = Alignment.Center
                 ) {
                   Icon(
-                    imageVector = if (isWorker) Icons.Filled.Engineering else Icons.Filled.School,
+                    imageVector = when (profile?.role) {
+                      UserRole.ADMIN -> Icons.Filled.Person
+                      UserRole.WORKER -> Icons.Filled.Engineering
+                      else -> Icons.Filled.School
+                    },
                     contentDescription = null,
                     tint = UccGold,
                     modifier = Modifier.size(20.dp)
@@ -217,7 +223,12 @@ fun ProfileScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
               ) {
                 Text(
-                  text = if (isWorker) "WORKS DEPT" else (profile?.role?.badge ?: "Undergraduate"),
+                  text = when (profile?.role) {
+                    UserRole.ADMIN -> "ADMINISTRATOR"
+                    UserRole.WORKER -> "WORKS DEPT"
+                    UserRole.GUEST -> "CAMPUS GUEST"
+                    else -> "STUDENT"
+                  },
                   color = Color.White,
                   fontSize = 10.sp,
                   fontWeight = FontWeight.Bold,
@@ -244,31 +255,36 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                   Text(
-                    text = if (isWorker) "STAFF CODE: " else "STUDENT ID: ",
+                    text = when (profile?.role) {
+                      UserRole.ADMIN -> "ADMIN CODE: "
+                      UserRole.WORKER -> "STAFF CODE: "
+                      UserRole.GUEST -> "GUEST ALIAS ID: "
+                      else -> "REGISTRATION / INDEX NO: "
+                    },
                     color = Color(0xFF94A3B8),
-                    fontSize = 11.sp
+                    fontSize = 10.sp
                   )
                   Text(
                     text = profile?.studentOrStaffId ?: if (isWorker) "STAFF/0891" else "PS/CSC/22/0199",
                     color = Color.White,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                   )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                  text = profile?.email ?: if (isWorker) "works.ucc@gmail.com" else "student@stu.ucc.edu.gh",
+                  text = profile?.email ?: "student@stu.ucc.edu.gh",
                   color = Color(0xFFCBD5E1),
                   fontSize = 11.sp
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                  text = profile?.department ?: if (isWorker) "Works Directorate" else "Dept. of Computer Science & IT",
+                  text = profile?.department ?: "Dept. of Computer Science & IT",
                   color = Color.White.copy(alpha = 0.9f),
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Medium
                 )
-                if (!isWorker) {
+                if (profile?.role == UserRole.STUDENT) {
                   Text(
                     text = "Hall: ${profile?.hallOfResidence ?: "Casely Hayford Hall"}",
                     color = UccGold,
@@ -280,10 +296,11 @@ fun ProfileScreen(
 
               // Authentic QR Code Badge
               CampusQrCodeCanvas(
-                payload = if (isWorker) {
-                  "UCC_STAFF:${profile?.studentOrStaffId ?: "STAFF/0891"}"
-                } else {
-                  "UCC_STUDENT:${profile?.studentOrStaffId ?: "PS/CSC/22/0199"}"
+                payload = when (profile?.role) {
+                  UserRole.ADMIN -> "UCC_ADMIN:${profile?.studentOrStaffId ?: "ADMIN/001"}"
+                  UserRole.WORKER -> "UCC_STAFF:${profile?.studentOrStaffId ?: "STAFF/0891"}"
+                  UserRole.GUEST -> "UCC_GUEST:${profile?.studentOrStaffId ?: "GUEST/7721"}"
+                  else -> "UCC_STUDENT:${profile?.studentOrStaffId ?: "PS/CSC/22/0199"}"
                 },
                 size = 72.dp,
                 dotColor = Color(0xFF09070F),
@@ -295,7 +312,7 @@ fun ProfileScreen(
       }
     }
 
-    // Role & Security Card (In-app role switching removed per security policy: must sign out first)
+    // Role & Security Card
     item {
       Card(
         shape = RoundedCornerShape(20.dp),
@@ -315,20 +332,41 @@ fun ProfileScreen(
                 modifier = Modifier
                   .size(36.dp)
                   .clip(CircleShape)
-                  .background(if (isWorker) Color(0xFFE0E7FF) else Color(0xFFFEF3C7)),
+                  .background(
+                    when (profile?.role) {
+                      UserRole.ADMIN -> Color(0xFFEDE9FE)
+                      UserRole.WORKER -> Color(0xFFE0E7FF)
+                      UserRole.GUEST -> Color(0xFFD1FAE5)
+                      else -> Color(0xFFFEF3C7)
+                    }
+                  ),
                 contentAlignment = Alignment.Center
               ) {
                 Icon(
-                  imageVector = if (isWorker) Icons.Filled.Engineering else Icons.Filled.School,
+                  imageVector = when (profile?.role) {
+                    UserRole.ADMIN -> Icons.Filled.Person
+                    UserRole.WORKER -> Icons.Filled.Engineering
+                    else -> Icons.Filled.School
+                  },
                   contentDescription = null,
-                  tint = if (isWorker) Color(0xFF4338CA) else Color(0xFFB45309),
+                  tint = when (profile?.role) {
+                    UserRole.ADMIN -> Color(0xFF6D28D9)
+                    UserRole.WORKER -> Color(0xFF4338CA)
+                    UserRole.GUEST -> Color(0xFF047857)
+                    else -> Color(0xFFB45309)
+                  },
                   modifier = Modifier.size(20.dp)
                 )
               }
               Spacer(modifier = Modifier.width(10.dp))
               Column {
                 Text(
-                  text = if (isWorker) "UCC Works Department Account" else "UCC Student Account",
+                  text = when (profile?.role) {
+                    UserRole.ADMIN -> "Directorate Admin Account"
+                    UserRole.WORKER -> "UCC Works Department Account"
+                    UserRole.GUEST -> "Campus Guest Account"
+                    else -> "UCC Student Account"
+                  },
                   fontSize = 14.sp,
                   fontWeight = FontWeight.Bold,
                   color = SkillAlleyTextPrimary
@@ -346,7 +384,12 @@ fun ProfileScreen(
               shape = RoundedCornerShape(100.dp)
             ) {
               Text(
-                text = if (isWorker) "Worker" else "Student",
+                text = when (profile?.role) {
+                  UserRole.ADMIN -> "Admin"
+                  UserRole.WORKER -> "Worker"
+                  UserRole.GUEST -> "Guest"
+                  else -> "Student"
+                },
                 color = Color.White,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
@@ -376,7 +419,12 @@ fun ProfileScreen(
               )
               Spacer(modifier = Modifier.width(8.dp))
               Text(
-                text = "To switch between Student and Works Dept accounts, you must sign out first using the button below.",
+                text = when (profile?.role) {
+                  UserRole.ADMIN -> "Directorate Admin has full privileges over both student fault reporting and staff dispatch operations."
+                  UserRole.WORKER -> "To switch between Student, Staff, or Admin accounts, you must sign out first using the button below."
+                  UserRole.GUEST -> "Signed in as Campus Visitor with alias. To sign in with a student index number or staff ID, sign out first."
+                  else -> "To switch between Student and Works Dept accounts, you must sign out first using the button below."
+                },
                 fontSize = 11.sp,
                 color = SkillAlleyTextSecondary,
                 lineHeight = 15.sp

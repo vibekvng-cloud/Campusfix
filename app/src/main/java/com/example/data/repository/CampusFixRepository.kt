@@ -7,10 +7,13 @@ import com.example.data.local.UserProfileEntity
 import com.example.data.model.CampusRoom
 import com.example.data.model.FaultReport
 import com.example.data.model.MaintenanceTeam
+import com.example.data.model.OnlineWorker
 import com.example.data.model.ReportStatus
 import com.example.data.model.UserProfile
 import com.example.data.model.UserRole
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 
@@ -18,6 +21,19 @@ class CampusFixRepository(private val database: CampusFixDatabase) {
   private val reportDao = database.faultReportDao()
   private val roomDao = database.campusRoomDao()
   private val profileDao = database.userProfileDao()
+
+  // Dynamic Online Workers List for Admin Dispatch
+  private val _onlineWorkers = MutableStateFlow(
+    listOf(
+      OnlineWorker("w_1", "Ing. Emmanuel Addo", "STAFF/0891", "Electrical", true, 2, "EA"),
+      OnlineWorker("w_2", "Kofi Mensah", "STAFF/0512", "Plumbing", true, 1, "KM"),
+      OnlineWorker("w_3", "Isaac Osei", "STAFF/0324", "IT & AV", true, 0, "IO"),
+      OnlineWorker("w_4", "Samuel Appiah", "STAFF/0198", "Carpentry", true, 1, "SA"),
+      OnlineWorker("w_5", "Yaw Boateng", "STAFF/0743", "Cooling & AC", true, 0, "YB"),
+      OnlineWorker("w_6", "Kwame Baffoe", "STAFF/0621", "General Maintenance", false, 0, "KB")
+    )
+  )
+  val onlineWorkers: Flow<List<OnlineWorker>> = _onlineWorkers.asStateFlow()
 
   val allReports: Flow<List<FaultReport>> =
     reportDao.getAllReports().map { list -> list.map { it.toModel() } }
@@ -48,6 +64,29 @@ class CampusFixRepository(private val database: CampusFixDatabase) {
     reportDao.updateReport(updated)
   }
 
+  suspend fun assignReportToWorker(reportId: String, worker: OnlineWorker) {
+    val existing = reportDao.getReportById(reportId) ?: return
+    val matchedTeam = when {
+      worker.team.contains("Elec", ignoreCase = true) -> MaintenanceTeam.ELECTRICAL
+      worker.team.contains("Plumb", ignoreCase = true) -> MaintenanceTeam.PLUMBING
+      worker.team.contains("IT", ignoreCase = true) || worker.team.contains("AV", ignoreCase = true) -> MaintenanceTeam.IT_AV
+      worker.team.contains("Carp", ignoreCase = true) -> MaintenanceTeam.CARPENTRY
+      worker.team.contains("Cool", ignoreCase = true) || worker.team.contains("AC", ignoreCase = true) -> MaintenanceTeam.ELECTRICAL
+      else -> MaintenanceTeam.ELECTRICAL
+    }
+    val updated = existing.copy(
+      assignedTeam = matchedTeam,
+      assignedTechnician = "${worker.name} (${worker.staffCode})",
+      status = ReportStatus.ASSIGNED
+    )
+    reportDao.updateReport(updated)
+
+    // Increment worker's active job counter
+    _onlineWorkers.value = _onlineWorkers.value.map {
+      if (it.id == worker.id) it.copy(activeJobsCount = it.activeJobsCount + 1) else it
+    }
+  }
+
   suspend fun updateReportStatus(
     reportId: String,
     newStatus: ReportStatus,
@@ -73,7 +112,6 @@ class CampusFixRepository(private val database: CampusFixDatabase) {
     val byPayload = roomDao.getRoomByQrPayload(clean)
     if (byPayload != null) return byPayload.toModel()
 
-    // Try extracting code if format is CAMPUSFIX://room/{CODE} or just {CODE}
     val code = if (clean.contains("://room/")) {
       clean.substringAfter("://room/")
     } else clean
@@ -90,9 +128,30 @@ class CampusFixRepository(private val database: CampusFixDatabase) {
     department: String
   ): UserProfile {
     val cleanId = studentOrStaffId.trim()
-    val cleanName = fullName.trim().ifBlank { if (role == UserRole.WORKER) "UCC Works Technician" else "UCC Student" }
-    val cleanEmail = email.trim().ifBlank { if (role == UserRole.WORKER) "works.ucc@gmail.com" else "student@stu.ucc.edu.gh" }
-    val cleanDept = department.trim().ifBlank { if (role == UserRole.WORKER) "Works Directorate" else "UCC Campus" }
+    val cleanName = fullName.trim().ifBlank {
+      when (role) {
+        UserRole.WORKER -> "UCC Works Technician"
+        UserRole.ADMIN -> "Directorate Admin"
+        UserRole.GUEST -> "Campus Visitor"
+        UserRole.STUDENT -> "UCC Student"
+      }
+    }
+    val cleanEmail = email.trim().ifBlank {
+      when (role) {
+        UserRole.WORKER -> "works.ucc@gmail.com"
+        UserRole.ADMIN -> "admin.works@ucc.edu.gh"
+        UserRole.GUEST -> "guest.visitor@ucc.edu.gh"
+        UserRole.STUDENT -> "student@stu.ucc.edu.gh"
+      }
+    }
+    val cleanDept = department.trim().ifBlank {
+      when (role) {
+        UserRole.WORKER -> "Works Directorate (Staff)"
+        UserRole.ADMIN -> "Directorate of Physical Development"
+        UserRole.GUEST -> "Campus Guest Access"
+        UserRole.STUDENT -> "UCC Undergraduate Campus"
+      }
+    }
 
     val profile = UserProfile(
       id = "user_${cleanId.replace("[^A-Za-z0-9]".toRegex(), "_").lowercase()}",

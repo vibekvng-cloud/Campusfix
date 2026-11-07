@@ -131,6 +131,7 @@ fun CampusFixApp(viewModel: CampusFixViewModel) {
   val selectedReportDetail by viewModel.selectedReportDetail.collectAsState()
   val showAuth by viewModel.showAuthDialog.collectAsState()
   val successMsg by viewModel.reportSuccessMessage.collectAsState()
+  val onlineWorkers by viewModel.onlineWorkers.collectAsState()
 
   // STRICT REQUIREMENT: No one is signed in until they actually sign in
   if (profile == null) {
@@ -328,9 +329,13 @@ fun CampusFixApp(viewModel: CampusFixViewModel) {
         ReportDetailDialog(
           report = report,
           userRole = profile?.role,
+          onlineWorkers = onlineWorkers,
           onDismiss = { viewModel.selectReportDetail(null) },
           onAssignTeam = { team ->
             viewModel.assignTeam(report.id, team, null)
+          },
+          onAssignWorker = { worker ->
+            viewModel.assignReportToWorker(report.id, worker)
           },
           onUpdateStatus = { nextStatus ->
             viewModel.updateReportStatus(report.id, nextStatus)
@@ -391,9 +396,14 @@ fun SkillAlleyBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        // Tab 1: Home / Ops Desk
+        // Tab 1: Home / Ops Desk / Control
         SkillAlleyNavItem(
-          title = if (isWorker) "Ops Desk" else "Home",
+          title = when (userRole) {
+            UserRole.ADMIN -> "Control"
+            UserRole.WORKER -> "Ops Desk"
+            UserRole.GUEST -> "Explore"
+            else -> "Home"
+          },
           activeIcon = Icons.Filled.Home,
           inactiveIcon = Icons.Outlined.Home,
           isSelected = activeTab == NavigationTab.HOME,
@@ -402,13 +412,14 @@ fun SkillAlleyBottomNavBar(
         )
 
         // Tab 2: My Reports / All Jobs
+        val isStaffOrAdmin = userRole == UserRole.WORKER || userRole == UserRole.ADMIN
         SkillAlleyNavItem(
-          title = if (isWorker) "All Jobs" else "Reports",
+          title = if (isStaffOrAdmin) "All Jobs" else "Reports",
           activeIcon = Icons.Filled.Assignment,
           inactiveIcon = Icons.Outlined.Assignment,
-          isSelected = if (isWorker) activeTab == NavigationTab.QUEUE else activeTab == NavigationTab.MY_REPORTS,
+          isSelected = if (isStaffOrAdmin) activeTab == NavigationTab.QUEUE else activeTab == NavigationTab.MY_REPORTS,
           onClick = {
-            if (isWorker) {
+            if (isStaffOrAdmin) {
               onTabSelected(NavigationTab.QUEUE)
             } else {
               onTabSelected(NavigationTab.MY_REPORTS)
@@ -445,9 +456,14 @@ fun SkillAlleyBottomNavBar(
           testTag = "nav_dashboard"
         )
 
-        // Tab 5: Profile (Student ID / Staff Pass)
+        // Tab 5: Profile (Student ID / Staff Pass / Admin Pass / Guest Pass)
         SkillAlleyNavItem(
-          title = if (isWorker) "Staff ID" else "Student ID",
+          title = when (userRole) {
+            UserRole.ADMIN -> "Admin Pass"
+            UserRole.WORKER -> "Staff ID"
+            UserRole.GUEST -> "Guest Pass"
+            else -> "Student ID"
+          },
           activeIcon = Icons.Filled.Person,
           inactiveIcon = Icons.Outlined.Person,
           isSelected = activeTab == NavigationTab.PROFILE,

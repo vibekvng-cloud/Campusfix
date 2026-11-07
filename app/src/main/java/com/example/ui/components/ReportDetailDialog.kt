@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.model.FaultReport
 import com.example.data.model.MaintenanceTeam
+import com.example.data.model.OnlineWorker
 import com.example.data.model.ReportStatus
 import com.example.data.model.UserRole
 import com.example.ui.theme.SkillAlleyBg
@@ -70,8 +71,10 @@ import java.util.Locale
 fun ReportDetailDialog(
   report: FaultReport,
   userRole: UserRole?,
+  onlineWorkers: List<OnlineWorker> = emptyList(),
   onDismiss: () -> Unit,
   onAssignTeam: (MaintenanceTeam) -> Unit,
+  onAssignWorker: ((OnlineWorker) -> Unit)? = null,
   onUpdateStatus: (ReportStatus) -> Unit,
   onDeleteReport: () -> Unit
 ) {
@@ -369,7 +372,117 @@ fun ReportDetailDialog(
         }
 
         // Maintenance Action Controls
-        if (userRole == UserRole.WORKER) {
+        if (userRole == UserRole.ADMIN) {
+          Spacer(modifier = Modifier.height(16.dp))
+          Text(
+            text = "Directorate Admin Dispatch & Assignment",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = SkillAlleyTextPrimary
+          )
+          Spacer(modifier = Modifier.height(6.dp))
+
+          if (!report.assignedTechnician.isNullOrBlank()) {
+            Surface(
+              color = Color(0xFF10B981).copy(alpha = 0.1f),
+              shape = RoundedCornerShape(10.dp),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Box(modifier = Modifier.size(8.dp).background(Color(0xFF10B981), CircleShape))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                  text = "Assigned Worker: ${report.assignedTechnician} (${report.assignedTeam?.displayName ?: "Works Directorate"})",
+                  color = Color(0xFF047857),
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold
+                )
+              }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+          }
+
+          if (onlineWorkers.isNotEmpty() && onAssignWorker != null && report.status != ReportStatus.RESOLVED) {
+            Text(
+              text = "Assign to Available Works Personnel:",
+              fontSize = 11.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = SkillAlleyTextSecondary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+              onlineWorkers.take(3).forEach { worker ->
+                Surface(
+                  shape = RoundedCornerShape(12.dp),
+                  color = SkillAlleyBg,
+                  border = androidx.compose.foundation.BorderStroke(1.dp, SkillAlleyBorder),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAssignWorker(worker) }
+                ) {
+                  Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Box(
+                        modifier = Modifier
+                          .size(7.dp)
+                          .background(if (worker.isOnline) Color(0xFF10B981) else Color(0xFF94A3B8), CircleShape)
+                      )
+                      Spacer(modifier = Modifier.width(8.dp))
+                      Text(
+                        text = "${worker.name} • ${worker.team}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SkillAlleyTextPrimary
+                      )
+                    }
+                    Text(
+                      text = "Assign ->",
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = SkillAlleyButtonDark
+                    )
+                  }
+                }
+              }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+          }
+
+          // Admin status overrides
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            if (report.status != ReportStatus.FIXING && report.status != ReportStatus.RESOLVED) {
+              Button(
+                onClick = { onUpdateStatus(ReportStatus.FIXING) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                shape = RoundedCornerShape(100.dp),
+                modifier = Modifier.weight(1f)
+              ) {
+                Text("Start Fixing ->", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+              }
+            }
+            if (report.status != ReportStatus.RESOLVED) {
+              Button(
+                onClick = { onUpdateStatus(ReportStatus.RESOLVED) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                shape = RoundedCornerShape(100.dp),
+                modifier = Modifier.weight(1f)
+              ) {
+                Text("Mark Resolved ✓", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+              }
+            }
+          }
+        } else if (userRole == UserRole.WORKER) {
           Spacer(modifier = Modifier.height(16.dp))
           Text(
             text = "UCC Maintenance Dispatch Action",

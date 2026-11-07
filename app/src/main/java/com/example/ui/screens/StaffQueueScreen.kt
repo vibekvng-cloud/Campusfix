@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.FaultReport
 import com.example.data.model.MaintenanceTeam
 import com.example.data.model.ReportStatus
+import com.example.data.model.UserRole
 import com.example.ui.theme.SkillAlleyBg
 import com.example.ui.theme.SkillAlleyBorder
 import com.example.ui.theme.SkillAlleyButtonDark
@@ -70,6 +71,7 @@ fun StaffQueueScreen(
   viewModel: CampusFixViewModel,
   modifier: Modifier = Modifier
 ) {
+  val profile by viewModel.currentProfile.collectAsState()
   val reports by viewModel.allReports.collectAsState()
   var selectedTeamFilter by remember { mutableStateOf<MaintenanceTeam?>(null) }
   var selectedStatusFilter by remember { mutableStateOf<ReportStatus?>(null) }
@@ -95,7 +97,7 @@ fun StaffQueueScreen(
       Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
           Text(
-            text = "UCC Maintenance Dispatch",
+            text = if (profile?.role == UserRole.ADMIN) "Directorate Job Registry" else "UCC Maintenance Dispatch",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = SkillAlleyTextPrimary
@@ -106,7 +108,7 @@ fun StaffQueueScreen(
             shape = RoundedCornerShape(6.dp)
           ) {
             Text(
-              text = "WORKS DEPT",
+              text = if (profile?.role == UserRole.ADMIN) "DIRECTORATE ADMIN" else "WORKS DEPT",
               color = Color.White,
               fontSize = 9.sp,
               fontWeight = FontWeight.Bold,
@@ -115,7 +117,7 @@ fun StaffQueueScreen(
           }
         }
         Text(
-          text = "Dispatch teams to Sandwich, NLT, CALC, LT & CODE",
+          text = if (profile?.role == UserRole.ADMIN) "Master maintenance oversight across Sandwich, NLT, CALC, LT & CODE" else "Dispatch teams to Sandwich, NLT, CALC, LT & CODE",
           fontSize = 12.sp,
           color = SkillAlleyTextSecondary
         )

@@ -352,6 +352,8 @@ fun UccSignInScreen(
                     text = when (role) {
                       UserRole.STUDENT -> "Student"
                       UserRole.WORKER -> "Works Dept"
+                      UserRole.ADMIN -> "Admin"
+                      UserRole.GUEST -> "Guest"
                     },
                     fontSize = 11.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
@@ -605,6 +607,8 @@ private fun DemoAccountRow(
             imageVector = when (role) {
               UserRole.STUDENT -> Icons.Filled.School
               UserRole.WORKER -> Icons.Filled.Engineering
+              UserRole.ADMIN -> Icons.Filled.Person
+              UserRole.GUEST -> Icons.Filled.Person
             },
             contentDescription = null,
             tint = badgeColor,
